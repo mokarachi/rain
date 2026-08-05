@@ -1,54 +1,400 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="h-full bg-slate-900 text-slate-100">
 <head>
   <meta charset="UTF-8">
-  <title>Monsoon Rainfall Observation</title>
-  <link rel="stylesheet" href="styles.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Karachi Monsoon Rainfall Observation System</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome CDN -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Leaflet GIS Map CSS & JS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <!-- html2pdf Direct Download CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <?!= HtmlService.createHtmlOutputFromFile('styles').getContent(); ?>
 </head>
-<body>
-  <div id="login-container">
-    <h2>Login</h2>
-    <input type="text" id="phone" placeholder="Phone Number">
-    <input type="password" id="pin" placeholder="4-digit PIN">
-    <button onclick="login()">Login</button>
-    <a href="#" onclick="openForgotPin()">Forgot PIN? Reset via WhatsApp</a>
+<body class="h-full font-sans antialiased bg-slate-900 text-slate-100 flex flex-col justify-between">
+
+  <!-- TOP APP BAR -->
+  <header id="app-header" class="hidden bg-slate-800 border-b border-slate-700 px-4 py-3 sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <i class="fa-solid me-2 fa-cloud-showers-heavy text-blue-400 text-2xl"></i>
+        <div>
+          <h1 class="text-sm md:text-base font-bold text-white leading-none">Karachi Rainfall Portal</h1>
+          <p id="user-badge" class="text-xs text-slate-400 mt-1 font-mono">Loading user...</p>
+        </div>
+      </div>
+      <button onclick="logout()" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs font-semibold rounded-lg transition border border-slate-600 flex items-center gap-1.5">
+        <i class="fa-solid fa-right-from-bracket"></i> Logout
+      </button>
+    </div>
+  </header>
+
+  <!-- MAIN CONTAINER -->
+  <main class="flex-grow flex items-center justify-center p-2 sm:p-4 md:p-6 overflow-y-auto">
+
+    <!-- 1. AUTHENTICATION / LOGIN VIEW -->
+    <div id="login-view" class="w-full max-w-md bg-slate-800 border border-slate-700 rounded-2xl shadow-2xl p-6 sm:p-8">
+      <div class="text-center mb-6">
+        <div class="inline-flex items-center justify-center w-16 h-16 bg-blue-500/10 text-blue-400 rounded-2xl mb-3 border border-blue-500/20">
+          <i class="fa-solid fa-cloud-bolt text-3xl"></i>
+        </div>
+        <h2 class="text-2xl font-black text-white tracking-tight">Monsoon GIS Portal</h2>
+        <p class="text-xs text-slate-400 mt-1">21 Weather Stations Network - Karachi Region</p>
+      </div>
+
+      <form id="login-form" onsubmit="event.preventDefault(); handleLogin();" class="space-y-4">
+        <div>
+          <label class="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1">Phone Number / Master Key</label>
+          <div class="relative">
+            <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400"><i class="fa-solid fa-phone text-sm"></i></span>
+            <input id="login-phone" type="text" required placeholder="e.g. 923133764792 or 0000" class="w-full bg-slate-900 border border-slate-700 rounded-xl py-2.5 pl-10 pr-3 text-sm text-white focus:outline-none focus:border-blue-500 font-mono">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1">4-Digit PIN Code</label>
+          <div class="relative">
+            <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400"><i class="fa-solid fa-lock text-sm"></i></span>
+            <input id="login-pin" type="password" maxlength="4" required placeholder="••••" class="w-full bg-slate-900 border border-slate-700 rounded-xl py-2.5 pl-10 pr-3 text-sm text-white focus:outline-none focus:border-blue-500 font-mono tracking-widest text-lg">
+          </div>
+        </div>
+
+        <button type="submit" id="btn-login" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-xl transition shadow-lg shadow-blue-600/30 flex items-center justify-center gap-2">
+          <span>Authenticate & Access</span> <i class="fa-solid fa-arrow-right text-sm"></i>
+        </button>
+      </form>
+
+      <div class="mt-4 text-center">
+        <button onclick="toggleModal('forgot-pin-modal', true)" class="text-xs text-blue-400 hover:underline">Forgot PIN? Reset via Meta WhatsApp</button>
+      </div>
+    </div>
+
+    <!-- 2. WORKER COMPACT DASHBOARD (100% Zero-Scroll Responsive) -->
+    <div id="worker-view" class="hidden w-full max-w-md bg-slate-800 border border-slate-700 rounded-2xl shadow-2xl p-4 sm:p-5 flex flex-col justify-between space-y-3">
+      <!-- Top Banner -->
+      <div class="bg-slate-900 p-3 rounded-xl border border-slate-700 flex items-center justify-between">
+        <div>
+          <h3 id="worker-station-name" class="font-black text-blue-400 text-base leading-tight">Station Loading...</h3>
+          <p id="worker-synoptic-date" class="text-xs text-slate-400 font-mono mt-0.5">Date: --</p>
+        </div>
+        <div class="text-right">
+          <span id="worker-total-rain" class="block text-xl font-black text-emerald-400">0.0 mm</span>
+          <span id="worker-slot-counter" class="text-[10px] uppercase tracking-wider text-slate-400 bg-slate-800 px-2 py-0.5 rounded border border-slate-700">Slots: 0/8</span>
+        </div>
+      </div>
+
+      <!-- Date Nav -->
+      <div class="flex items-center justify-between bg-slate-900/60 px-2 py-1 rounded-lg border border-slate-700/60 text-xs">
+        <button onclick="changeWorkerDate(-1)" class="p-1 text-slate-300 hover:text-white"><i class="fa-solid fa-chevron-left"></i> Prev Day</button>
+        <span id="worker-date-display" class="font-bold font-mono text-slate-200">2026-08-05</span>
+        <button onclick="changeWorkerDate(1)" class="p-1 text-slate-300 hover:text-white">Next Day <i class="fa-solid fa-chevron-right"></i></button>
+      </div>
+
+      <!-- 4x2 Compact Slot Grid -->
+      <div id="slot-grid" class="grid grid-cols-4 gap-1.5">
+        <!-- JS rendered 8 slots -->
+      </div>
+
+      <!-- Slot Navigation Selector Bar -->
+      <div class="flex items-center justify-between bg-slate-900 p-2 rounded-xl border border-slate-700">
+        <button onclick="navSlot(-1)" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 rounded text-xs font-bold border border-slate-700"><i class="fa-solid fa-chevron-left"></i></button>
+        <div class="text-center">
+          <span id="active-slot-label-bold" class="block text-xs font-black text-white">--:-- PKT</span>
+          <span id="active-slot-label-small" class="block text-[10px] text-slate-400 font-mono">(--:-- UTC)</span>
+        </div>
+        <button onclick="navSlot(1)" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 rounded text-xs font-bold border border-slate-700"><i class="fa-solid fa-chevron-right"></i></button>
+      </div>
+
+      <!-- Input Panel -->
+      <div class="bg-slate-900 p-3 rounded-xl border border-slate-700 space-y-2">
+        <div class="flex items-center gap-2">
+          <input id="worker-input-val" type="text" placeholder="0.0" class="w-full bg-slate-800 border border-slate-700 rounded-lg py-2 px-3 text-2xl font-black text-emerald-400 text-center font-mono focus:outline-none focus:border-blue-500">
+          <button onclick="setTraceValue()" class="px-3 py-2.5 bg-purple-600/30 hover:bg-purple-600/50 text-purple-300 text-xs font-bold rounded-lg border border-purple-500/40 whitespace-nowrap">Set Trace (T)</button>
+        </div>
+        <div class="flex items-center justify-between text-[11px] text-slate-400">
+          <span id="edit-attempt-counter">Edits Used: 0 / 3</span>
+          <button onclick="toggleModal('accumulate-modal', true)" class="text-blue-400 hover:underline">Accumulate Missed Slots</button>
+        </div>
+        <button id="btn-save-reading" onclick="saveWorkerReading()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded-lg transition shadow-md shadow-emerald-600/20 text-sm flex items-center justify-center gap-2">
+          <i class="fa-solid fa-floppy-disk"></i> Save Slot Reading
+        </button>
+      </div>
+    </div>
+
+    <!-- 3. MASTER WORKER DASHBOARD -->
+    <div id="master-worker-view" class="hidden w-full max-w-4xl bg-slate-800 border border-slate-700 rounded-2xl shadow-2xl p-4 sm:p-6 space-y-4">
+      <div class="flex flex-col sm:flex-row items-center justify-between gap-3 bg-slate-900 p-3 rounded-xl border border-slate-700">
+        <h2 class="text-lg font-black text-blue-400">Master Field Worker Control Center</h2>
+        <div class="flex items-center gap-2 bg-slate-800 p-1 rounded-lg border border-slate-700">
+          <button id="btn-mw-mode-single" onclick="setMasterWorkerMode('single')" class="px-3 py-1 bg-blue-600 text-white text-xs font-bold rounded">Station-Wise</button>
+          <button id="btn-mw-mode-batch" onclick="setMasterWorkerMode('batch')" class="px-3 py-1 text-slate-400 hover:text-white text-xs font-bold rounded">7x3 Batch Grid (21 Stations)</button>
+        </div>
+      </div>
+
+      <!-- Station Selector for Single Station Mode -->
+      <div id="mw-single-station-picker" class="bg-slate-900 p-3 rounded-xl border border-slate-700">
+        <label class="block text-xs font-bold text-slate-300 mb-1">Select Active Station Target:</label>
+        <select id="mw-station-dropdown" onchange="onMasterStationChange()" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-sm text-white font-bold">
+          <!-- Populated dynamically -->
+        </select>
+      </div>
+
+      <!-- Batch 7x3 Grid Container -->
+      <div id="mw-batch-container" class="hidden space-y-3">
+        <div class="flex items-center justify-between bg-slate-900 p-3 rounded-xl border border-slate-700">
+          <label class="text-xs font-bold text-slate-300">Target Slot for Batch Entry:</label>
+          <select id="mw-batch-slot-select" class="bg-slate-800 border border-slate-700 rounded-lg p-1.5 text-xs text-white font-bold">
+            <!-- Populated -->
+          </select>
+        </div>
+        
+        <!-- 7 Rows x 3 Columns Responsive Grid -->
+        <div id="batch-7x3-grid" class="grid grid-cols-1 md:grid-cols-3 gap-2 max-h-[55vh] overflow-y-auto p-1">
+          <!-- JS injected 21 inputs -->
+        </div>
+
+        <button onclick="saveMasterBatch()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl transition shadow-lg text-sm flex items-center justify-center gap-2">
+          <i class="fa-solid fa-layer-group"></i> Save All 21 Stations for Selected Slot
+        </button>
+      </div>
+    </div>
+
+    <!-- 4. ADMIN & SUPERVISOR DASHBOARD -->
+    <div id="admin-view" class="hidden w-full max-w-7xl bg-slate-800 border border-slate-700 rounded-2xl shadow-2xl p-4 sm:p-6 space-y-4">
+      
+      <!-- Admin Top Toolbar Controls -->
+      <div class="flex flex-col lg:flex-row items-center justify-between gap-3 bg-slate-900 p-3 rounded-xl border border-slate-700">
+        
+        <!-- Tab Toggles -->
+        <div class="flex flex-wrap items-center gap-1.5 bg-slate-800 p-1 rounded-lg border border-slate-700 w-full lg:w-auto">
+          <button id="tab-daily" onclick="switchAdminTab('daily')" class="px-3 py-1.5 bg-blue-600 text-white text-xs font-bold rounded flex items-center gap-1.5"><i class="fa-solid fa-calendar-day"></i> 📅 Daily</button>
+          <button id="tab-monthly" onclick="switchAdminTab('monthly')" class="px-3 py-1.5 text-slate-400 hover:text-white text-xs font-bold rounded flex items-center gap-1.5"><i class="fa-solid fa-calendar-days"></i> 📆 Monthly</button>
+          <button id="tab-audit" onclick="switchAdminTab('audit')" class="px-3 py-1.5 text-slate-400 hover:text-white text-xs font-bold rounded flex items-center gap-1.5"><i class="fa-solid fa-clock-rotate-left"></i> 📜 Audit Log</button>
+          <button id="tab-users" onclick="switchAdminTab('users')" class="px-3 py-1.5 text-slate-400 hover:text-white text-xs font-bold rounded flex items-center gap-1.5"><i class="fa-solid fa-users"></i> 👥 System Users</button>
+        </div>
+
+        <!-- View Mode & Date Filters -->
+        <div class="flex flex-wrap items-center gap-2 w-full lg:w-auto justify-end">
+          
+          <!-- View Mode Toggle (Table / Map) -->
+          <div id="view-mode-toggle" class="flex items-center bg-slate-800 p-1 rounded-lg border border-slate-700">
+            <button id="btn-view-table" onclick="setAdminViewMode('table')" class="px-2.5 py-1 bg-slate-700 text-white text-xs font-bold rounded">📊 Table View</button>
+            <button id="btn-view-map" onclick="setAdminViewMode('map')" class="px-2.5 py-1 text-slate-400 hover:text-white text-xs font-bold rounded">🌐 Map View</button>
+          </div>
+
+          <!-- Date Navigation Picker -->
+          <div id="daily-date-controls" class="flex items-center gap-1 bg-slate-800 px-2 py-1 rounded-lg border border-slate-700 text-xs">
+            <button onclick="navAdminDate(-1)" class="text-slate-300 hover:text-white p-1"><i class="fa-solid fa-chevron-left"></i></button>
+            <input id="admin-date-picker" type="date" onchange="onAdminDateChange()" class="bg-transparent text-white font-mono font-bold focus:outline-none">
+            <button id="btn-next-date" onclick="navAdminDate(1)" class="text-slate-300 hover:text-white p-1"><i class="fa-solid fa-chevron-right"></i></button>
+          </div>
+
+          <!-- Month Selector -->
+          <div id="monthly-date-controls" class="hidden flex items-center gap-1 bg-slate-800 px-2 py-1 rounded-lg border border-slate-700 text-xs">
+            <input id="admin-month-picker" type="month" onchange="onAdminMonthChange()" class="bg-transparent text-white font-mono font-bold focus:outline-none">
+          </div>
+
+          <!-- Export PDF Button -->
+          <button onclick="exportReportPDF()" class="px-3 py-1.5 bg-red-600/30 hover:bg-red-600/50 text-red-300 text-xs font-bold rounded-lg border border-red-500/40 flex items-center gap-1">
+            <i class="fa-solid fa-file-pdf"></i> Export PDF
+          </button>
+        </div>
+      </div>
+
+      <!-- MAIN REPORT CONTAINER (Target for PDF Generation) -->
+      <div id="printable-report-container" class="bg-slate-900 border border-slate-700 rounded-xl p-4 min-h-[500px]">
+        
+        <!-- Dynamic Header (Injected during Print/PDF) -->
+        <div id="pdf-header" class="hidden mb-4 pb-2 border-b border-slate-700">
+          <h2 id="pdf-report-title" class="text-xl font-black text-slate-100">Daily Rainfall Summary Report</h2>
+          <p id="pdf-report-subtitle" class="text-xs text-slate-400 font-mono">Karachi Meteorological Station Network</p>
+        </div>
+
+        <!-- A. Daily Summary Table Matrix -->
+        <div id="panel-daily-table" class="overflow-x-auto">
+          <table class="w-full text-left text-xs border-collapse">
+            <thead>
+              <tr class="bg-slate-800 text-slate-300 font-bold uppercase tracking-wider border-b border-slate-700">
+                <th class="p-2.5 border-r border-slate-700 min-w-[180px]">Station Name</th>
+                <th class="p-2 text-center">11:00 PKT<br><span class="text-[9px] text-slate-400">03-06Z</span></th>
+                <th class="p-2 text-center">14:00 PKT<br><span class="text-[9px] text-slate-400">06-09Z</span></th>
+                <th class="p-2 text-center">17:00 PKT<br><span class="text-[9px] text-slate-400">09-12Z</span></th>
+                <th class="p-2 text-center">20:00 PKT<br><span class="text-[9px] text-slate-400">12-15Z</span></th>
+                <th class="p-2 text-center">23:00 PKT<br><span class="text-[9px] text-slate-400">15-18Z</span></th>
+                <th class="p-2 text-center">02:00 PKT<br><span class="text-[9px] text-slate-400">18-21Z</span></th>
+                <th class="p-2 text-center">05:00 PKT<br><span class="text-[9px] text-slate-400">21-00Z</span></th>
+                <th class="p-2 text-center">08:00 PKT<br><span class="text-[9px] text-slate-400">00-03Z</span></th>
+                <th class="p-2.5 text-right bg-slate-800/80 min-w-[90px]">24hr Total</th>
+              </tr>
+            </thead>
+            <tbody id="daily-matrix-body" class="divide-y divide-slate-800 font-mono">
+              <!-- JS Injected rows -->
+            </tbody>
+          </table>
+        </div>
+
+        <!-- B. Monthly Summary Table Matrix -->
+        <div id="panel-monthly-table" class="hidden overflow-x-auto">
+          <table class="w-full text-left text-[11px] border-collapse">
+            <thead>
+              <tr id="monthly-table-header" class="bg-slate-800 text-slate-300 font-bold border-b border-slate-700">
+                <!-- JS Injected Days 1-31 -->
+              </tr>
+            </thead>
+            <tbody id="monthly-matrix-body" class="divide-y divide-slate-800 font-mono">
+              <!-- JS Injected rows -->
+            </tbody>
+          </table>
+        </div>
+
+        <!-- C. GIS Leaflet Map Container -->
+        <div id="panel-gis-map" class="hidden relative">
+          <div id="map-container" class="w-full h-[550px] rounded-xl border border-slate-700 z-10"></div>
+          
+          <!-- Visual Map Scale Legend -->
+          <div class="absolute bottom-4 right-4 bg-slate-900/90 backdrop-blur border border-slate-700 p-3 rounded-xl shadow-xl z-20 text-[11px] space-y-1 font-semibold">
+            <div class="font-bold text-slate-200 border-b border-slate-700 pb-1 mb-1">Rainfall Scale (mm)</div>
+            <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-slate-400"></span> 0.0 mm (Dry)</div>
+            <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-purple-500"></span> Trace (T)</div>
+            <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-emerald-500"></span> Light (0.1 - 10 mm)</div>
+            <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-blue-500"></span> Moderate (10 - 50 mm)</div>
+            <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-red-500"></span> Heavy (> 50 mm)</div>
+          </div>
+        </div>
+
+        <!-- D. Audit Trail Log View -->
+        <div id="panel-audit-log" class="hidden overflow-x-auto">
+          <table class="w-full text-left text-xs border-collapse">
+            <thead>
+              <tr class="bg-slate-800 text-slate-300 font-bold border-b border-slate-700">
+                <th class="p-2">Timestamp (UTC)</th>
+                <th class="p-2">User / Phone</th>
+                <th class="p-2">Station</th>
+                <th class="p-2">Role</th>
+                <th class="p-2">Action</th>
+                <th class="p-2">Details</th>
+              </tr>
+            </thead>
+            <tbody id="audit-log-body" class="divide-y divide-slate-800 font-mono">
+              <!-- JS Injected -->
+            </tbody>
+          </table>
+        </div>
+
+        <!-- E. System Users Status View -->
+        <div id="panel-system-users" class="hidden overflow-x-auto">
+          <table class="w-full text-left text-xs border-collapse">
+            <thead>
+              <tr class="bg-slate-800 text-slate-300 font-bold border-b border-slate-700">
+                <th class="p-2">Phone Identifier</th>
+                <th class="p-2">Assigned Station / Title</th>
+                <th class="p-2">System Role</th>
+                <th class="p-2">Status</th>
+                <th class="p-2">Last Login Timestamp</th>
+              </tr>
+            </thead>
+            <tbody id="users-status-body" class="divide-y divide-slate-800 font-mono">
+              <!-- JS Injected -->
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Dynamic Real-Time Generation Footer for PDF Export -->
+        <div id="pdf-footer" class="hidden mt-4 pt-2 border-t border-slate-700 text-[10px] text-slate-400 font-mono flex justify-between">
+          <span>Karachi Monsoon GIS Observation Engine</span>
+          <span id="pdf-timestamp">Report generated on --</span>
+        </div>
+
+      </div>
+    </div>
+
+  </main>
+
+  <!-- MODAL 1: FORGOT PIN VIA WHATSAPP -->
+  <div id="forgot-pin-modal" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-slate-800 border border-slate-700 rounded-2xl w-full max-w-sm p-6 space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-700 pb-3">
+        <h3 class="font-bold text-white text-base">Reset PIN via WhatsApp</h3>
+        <button onclick="toggleModal('forgot-pin-modal', false)" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+      
+      <div class="space-y-3">
+        <div>
+          <label class="block text-xs font-bold text-slate-300 mb-1">Registered Phone Number</label>
+          <input id="reset-phone" type="text" placeholder="923133764792" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white font-mono">
+        </div>
+        <button onclick="triggerSendOTP()" class="w-full bg-purple-600 hover:bg-purple-500 text-white font-bold py-2 rounded-lg text-xs">Send WhatsApp OTP</button>
+
+        <div class="pt-2 border-t border-slate-700 space-y-2">
+          <input id="reset-otp" type="text" placeholder="4-Digit OTP" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white font-mono text-center">
+          <input id="reset-new-pin" type="password" maxlength="4" placeholder="New 4-Digit PIN" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white font-mono text-center tracking-widest">
+          <button onclick="triggerResetPIN()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 rounded-lg text-xs">Verify & Update PIN</button>
+        </div>
+      </div>
+    </div>
   </div>
 
-  <div id="forgot-pin-modal" class="modal hidden">
-    <div class="modal-content">
-      <h3>Reset PIN via WhatsApp</h3>
-      <input type="text" id="otp-phone" placeholder="Phone Number">
-      <button onclick="sendOTP()">Send OTP</button>
-      <input type="text" id="otp-code" placeholder="Enter OTP">
-      <input type="password" id="new-pin" placeholder="New 4-digit PIN">
-      <button onclick="resetPin()">Reset PIN</button>
-      <button onclick="closeForgotPin()">Close</button>
+  <!-- MODAL 2: ACCUMULATE MISSED SLOTS -->
+  <div id="accumulate-modal" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-slate-800 border border-slate-700 rounded-2xl w-full max-w-sm p-6 space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-700 pb-3">
+        <h3 class="font-bold text-white text-base">Accumulate Missed Slots</h3>
+        <button onclick="toggleModal('accumulate-modal', false)" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+
+      <div class="space-y-3 text-xs">
+        <div>
+          <label class="block font-bold text-slate-300 mb-1">Start Missed Slot:</label>
+          <select id="acc-start-slot" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white font-mono">
+            <!-- JS Populated -->
+          </select>
+        </div>
+        <div>
+          <label class="block font-bold text-slate-300 mb-1">End Slot (Total Receiver):</label>
+          <select id="acc-end-slot" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white font-mono">
+            <!-- JS Populated -->
+          </select>
+        </div>
+        <div>
+          <label class="block font-bold text-slate-300 mb-1">Total Accumulated Rainfall (mm):</label>
+          <input id="acc-total-val" type="text" placeholder="e.g. 30.0" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-lg font-black text-emerald-400 font-mono text-center">
+        </div>
+        <button onclick="submitAccumulation()" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2.5 rounded-lg text-xs">Merge & Save Accumulation</button>
+      </div>
     </div>
   </div>
 
-  <div id="dashboard" class="hidden">
-    <div id="banner">
-      <h2 id="station-name"></h2>
-      <p id="today-date"></p>
-      <p id="slot-counter"></p>
-      <p id="total-rain"></p>
-    </div>
-    <div id="slot-grid"></div>
-    <div id="slot-controls">
-      <button id="prev-slot">◀</button>
-      <button id="next-slot">▶</button>
-    </div>
-    <div id="date-controls">
-      <button id="prev-day">◀</button>
-      <button id="next-day">▶</button>
-    </div>
-    <div id="input-controls">
-      <input type="text" id="rainfall-input" class="rain-input">
-      <button onclick="setTrace()">Set Trace (T)</button>
-      <button onclick="saveReading()">Save Reading</button>
+  <!-- MODAL 3: ADMIN CELL AMENDMENT OVERRIDE -->
+  <div id="admin-amend-modal" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-slate-800 border border-slate-700 rounded-2xl w-full max-w-sm p-6 space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-700 pb-3">
+        <h3 class="font-bold text-white text-base">Admin Cell Amendment</h3>
+        <button onclick="toggleModal('admin-amend-modal', false)" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+
+      <div class="space-y-3 text-xs">
+        <div class="bg-slate-900 p-2.5 rounded-lg border border-slate-700 space-y-1">
+          <p class="text-slate-400">Station: <span id="amend-target-station" class="text-white font-bold">--</span></p>
+          <p class="text-slate-400">Date Target: <span id="amend-target-date" class="text-white font-mono">--</span></p>
+          <p class="text-slate-400">UTC Slot: <span id="amend-target-slot" class="text-white font-mono">--</span></p>
+        </div>
+
+        <div>
+          <label class="block font-bold text-slate-300 mb-1">New Value (mm / "T" for Trace / "0.0"):</label>
+          <input id="amend-input-val" type="text" placeholder="0.0" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xl font-black text-emerald-400 font-mono text-center">
+        </div>
+
+        <button onclick="submitAdminAmendment()" class="w-full bg-amber-600 hover:bg-amber-500 text-white font-bold py-2.5 rounded-lg text-xs flex items-center justify-center gap-2">
+          <i class="fa-solid fa-pen-to-square"></i> Apply Official Amendment
+        </button>
+      </div>
     </div>
   </div>
 
-  <script src="app.js"></script>
+  <?!= HtmlService.createHtmlOutputFromFile('app').getContent(); ?>
 </body>
 </html>
