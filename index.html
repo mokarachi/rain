@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Monsoon Rainfall Observation</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="login-container">
+    <h2>Login</h2>
+    <input type="text" id="phone" placeholder="Phone Number">
+    <input type="password" id="pin" placeholder="4-digit PIN">
+    <button onclick="login()">Login</button>
+    <a href="#" onclick="openForgotPin()">Forgot PIN? Reset via WhatsApp</a>
+  </div>
+
+  <div id="forgot-pin-modal" class="modal hidden">
+    <div class="modal-content">
+      <h3>Reset PIN via WhatsApp</h3>
+      <input type="text" id="otp-phone" placeholder="Phone Number">
+      <button onclick="sendOTP()">Send OTP</button>
+      <input type="text" id="otp-code" placeholder="Enter OTP">
+      <input type="password" id="new-pin" placeholder="New 4-digit PIN">
+      <button onclick="resetPin()">Reset PIN</button>
+      <button onclick="closeForgotPin()">Close</button>
+    </div>
+  </div>
+
+  <div id="dashboard" class="hidden">
+    <div id="banner">
+      <h2 id="station-name"></h2>
+      <p id="today-date"></p>
+      <p id="slot-counter"></p>
+      <p id="total-rain"></p>
+    </div>
+    <div id="slot-grid"></div>
+    <div id="slot-controls">
+      <button id="prev-slot">◀</button>
+      <button id="next-slot">▶</button>
+    </div>
+    <div id="date-controls">
+      <button id="prev-day">◀</button>
+      <button id="next-day">▶</button>
+    </div>
+    <div id="input-controls">
+      <input type="text" id="rainfall-input" class="rain-input">
+      <button onclick="setTrace()">Set Trace (T)</button>
+      <button onclick="saveReading()">Save Reading</button>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
