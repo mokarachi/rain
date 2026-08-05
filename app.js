@@ -92,7 +92,7 @@ function callBackend(payload, callback) {
       .doPost({ postData: { contents: JSON.stringify(payload) } });
   } else {
     // Development Fetch Fallback
-    fetch(window.location.href, {
+    fetch(https://script.google.com/macros/s/AKfycby7LsXeMc4o-iFMWrJ9Roa9oVH8fiz6ZGedeTYNP0wfWGqAWvOHdHdmQ6zqay3bEzmn/exec, {
       method: "POST",
       body: JSON.stringify(payload)
     })
