@@ -1,70 +1,88 @@
-body {
-  font-family: Arial, sans-serif;
-  margin: 0;
-  padding: 0;
-  text-align: center;
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #0f172a;
+}
+::-webkit-scrollbar-thumb {
+  background: #334155;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #475569;
 }
 
-#login-container {
-  margin-top: 50px;
+/* Slot Card Status Colors */
+.slot-card-pending {
+  background-color: #1e293b;
+  border-color: #334155;
+  color: #94a3b8;
+}
+.slot-card-active {
+  background-color: #1e3a8a;
+  border-color: #3b82f6;
+  color: #ffffff;
+  box-shadow: 0 0 10px rgba(59, 130, 246, 0.4);
+}
+.slot-card-recorded {
+  background-color: #064e3b;
+  border-color: #10b981;
+  color: #a7f3d0;
+}
+.slot-card-merged {
+  background-color: #4c1d95;
+  border-color: #8b5cf6;
+  color: #ddd6fe;
+}
+.slot-card-locked {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
-input {
-  display: block;
-  margin: 10px auto;
-  padding: 8px;
-  width: 80%;
+/* Matrix Table Styling */
+table td, table th {
+  white-space: nowrap;
 }
 
-button {
-  margin: 10px;
-  padding: 10px 20px;
-  font-size: 16px;
+/* Printable PDF Formatting Rules */
+@media print {
+  body {
+    background-color: #ffffff !important;
+    color: #000000 !important;
+  }
+  #app-header, #view-mode-toggle, #daily-date-controls, #monthly-date-controls, button {
+    display: none !important;
+  }
+  #printable-report-container {
+    border: none !important;
+    background-color: #ffffff !important;
+    color: #000000 !important;
+    padding: 0 !important;
+  }
+  #pdf-header, #pdf-footer {
+    display: flex !important;
+    color: #000000 !important;
+    border-color: #000000 !important;
+  }
+  table th {
+    background-color: #f1f5f9 !important;
+    color: #000000 !important;
+  }
+  table td {
+    color: #000000 !important;
+    border-color: #cbd5e1 !important;
+  }
 }
 
-.modal {
-  position: fixed;
-  top: 0; left: 0;
-  width: 100%; height: 100%;
-  background: rgba(0,0,0,0.5);
+/* Leaflet Map Tooltip Customization */
+.leaflet-popup-content-wrapper {
+  background: #0f172a !important;
+  color: #f8fafc !important;
+  border: 1px solid #334155;
+  border-radius: 12px;
 }
-
-.modal-content {
-  background: #fff;
-  margin: 100px auto;
-  padding: 20px;
-  width: 300px;
-}
-
-.hidden {
-  display: none;
-}
-
-#dashboard {
-  margin: 20px;
-}
-
-#slot-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  grid-gap: 10px;
-  margin: 20px auto;
-  max-width: 400px;
-}
-
-.slot-card {
-  padding: 20px;
-  border-radius: 5px;
-  font-weight: bold;
-}
-
-.slot-recorded { background: green; color: white; }
-.slot-merged { background: purple; color: white; }
-.slot-active { background: blue; color: white; }
-.slot-pending { background: gray; color: white; }
-
-.rain-input {
-  font-size: 24px;
-  font-weight: bold;
-  text-align: center;
+.leaflet-popup-tip {
+  background: #0f172a !important;
 }
